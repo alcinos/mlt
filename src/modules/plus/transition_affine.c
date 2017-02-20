@@ -1,6 +1,6 @@
 /*
  * transition_affine.c -- affine transformations
- * Copyright (C) 2003-2016 Meltytech, LLC
+ * Copyright (C) 2003-2017 Meltytech, LLC
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -419,7 +419,9 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 
 	// Fetch the a frame image
 	*format = mlt_image_rgb24a;
-	mlt_frame_get_image( a_frame, image, format, width, height, 1 );
+	int error = mlt_frame_get_image( a_frame, image, format, width, height, 1 );
+	if (error || !image)
+		return error;
 
 	// Calculate the region now
 	mlt_service_lock( MLT_TRANSITION_SERVICE( transition ) );
@@ -456,15 +458,14 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 	mlt_properties_set_int( b_props, "rescale_height", b_height );
 
 	// Suppress padding and aspect normalization.
-	char *interps = mlt_properties_get( a_props, "rescale.interp" );
-	if ( interps )
-		interps = strdup( interps );
 	mlt_properties_set( b_props, "rescale.interp", "none" );
 
 	// This is not a field-aware transform.
 	mlt_properties_set_int( b_props, "consumer_deinterlace", 1 );
 
-	mlt_frame_get_image( b_frame, &b_image, &b_format, &b_width, &b_height, 0 );
+	error = mlt_frame_get_image( b_frame, &b_image, &b_format, &b_width, &b_height, 0 );
+	if (error || !b_image) 
+		return error;
 
 	// Check that both images are of the correct format and process
 	if ( *format == mlt_image_rgb24a && b_format == mlt_image_rgb24a )
@@ -511,10 +512,7 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 		get_affine( &affine, transition, ( float )position );
 		dz = MapZ( affine.matrix, 0, 0 );
 		if ( (int) fabs( dz * 1000 ) < 25 )
-		{
-			free( interps );
 			return 0;
-		}
 
 		// Factor scaling into the transformation based on output resolution.
 		if ( mlt_properties_get_int( properties, "distort" ) )
@@ -552,8 +550,13 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 
 		// Affine boundaries
 		float minima = 0;
-		float xmax = b_width;
-		float ymax = b_height;
+		float xmax = b_width - 1;
+		float ymax = b_height - 1;
+
+		char *interps = mlt_properties_get( a_props, "rescale.interp" );
+		// Copy in case string is changed.
+		if ( interps )
+			interps = strdup( interps );
 
 		// Set the interpolation function
 		if ( interps == NULL || strcmp( interps, "nearest" ) == 0 || strcmp( interps, "neighbor" ) == 0 || strcmp( interps, "tiles" ) == 0 || strcmp( interps, "fast_bilinear" ) == 0 )
@@ -567,9 +570,7 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 		else if ( strcmp( interps, "bilinear" ) == 0 )
 		{
 			interp = interpBL_b32;
-			// uses floorf. Values should be >= 0 and < max + 1.
-			xmax += 0.99;
-			ymax += 0.99;
+			// uses floorf.
 		}
 		else if ( strcmp( interps, "bicubic" ) == 0 ||  strcmp( interps, "hyper" ) == 0 || strcmp( interps, "sinc" ) == 0 || strcmp( interps, "lanczos" ) == 0 || strcmp( interps, "spline" ) == 0 )
 		{
@@ -579,6 +580,7 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 			// uses ceilf. Values should be > -1 and <= max.
 			minima -= 1;
 		}
+		free( interps );
 
 		// Do the transform with interpolation
 		for ( i = 0, y = lower_y; i < *height; i++, y++ )
@@ -593,7 +595,6 @@ static int transition_get_image( mlt_frame a_frame, uint8_t **image, mlt_image_f
 			}
 		}
 	}
-	free( interps );
 
 	return 0;
 }

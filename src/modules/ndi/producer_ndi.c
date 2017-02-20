@@ -20,7 +20,6 @@
 #define __STDC_FORMAT_MACROS  /* see inttypes.h */
 #define __STDC_LIMIT_MACROS
 #define __STDC_CONSTANT_MACROS
-#define _XOPEN_SOURCE
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -45,7 +44,6 @@ typedef struct
 	char* arg;
 	pthread_t th;
 	int count;
-	mlt_slices sliced_swab;
 	mlt_deque a_queue, v_queue;
 	pthread_mutex_t lock;
 	pthread_cond_t cond;
@@ -80,7 +78,7 @@ static void* producer_ndi_feeder( void* p )
 	mlt_log_debug( MLT_PRODUCER_SERVICE( producer ), "%s: waiting for source [%s]\n", __FUNCTION__, self->arg );
 	for ( i = -1; !self->f_exit && -1 == i; )
 	{
-		int c = 0, j;
+		unsigned int c = 0, j;
 
 		// wait for sources
 		ndi_srcs = NDIlib_find_get_sources( ndi_find, &c, 100 );
@@ -114,7 +112,7 @@ static void* producer_ndi_feeder( void* p )
 	NDIlib_recv_create_t recv_create_desc =
 	{
 		ndi_srcs[ i ],
-		NDIlib_recv_color_format_UYVY_BGRA,
+		NDIlib_recv_color_format_e_UYVY_BGRA,
 		NDIlib_recv_bandwidth_highest,
 		true
 	};
@@ -330,11 +328,6 @@ static int get_frame( mlt_producer producer, mlt_frame_ptr pframe, int index )
 	// run thread
 	if ( !self->f_running )
 	{
-		if ( !self->sliced_swab && mlt_properties_get( properties, "sliced_swab" )
-			&& mlt_properties_get_int( properties, "sliced_swab" ) )
-			self->sliced_swab = mlt_slices_init_pool(0, SCHED_FIFO,
-				sched_get_priority_max( SCHED_FIFO ), __FILE__ );
-
 		// set flags
 		self->f_exit = 0;
 
@@ -354,7 +347,6 @@ static int get_frame( mlt_producer producer, mlt_frame_ptr pframe, int index )
 
 		if ( !video )
 		{
-			int r;
 			uint64_t usec;
 			struct timeval now;
 			struct timespec tm;
@@ -367,7 +359,7 @@ static int get_frame( mlt_producer producer, mlt_frame_ptr pframe, int index )
 			tm.tv_nsec = (usec % 1000000LL) * 1000LL;
 
 ////fprintf(stderr, "%s:%d: pthread_cond_timedwait...\n", __FUNCTION__, __LINE__ );
-			r = pthread_cond_timedwait( &self->cond, &self->lock, &tm );
+			pthread_cond_timedwait( &self->cond, &self->lock, &tm );
 ////fprintf(stderr, "%s:%d: pthread_cond_timedwait=%d\n", __FUNCTION__, __LINE__, r );
 
 			continue;

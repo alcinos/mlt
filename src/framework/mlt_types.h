@@ -2,7 +2,7 @@
  * \file mlt_types.h
  * \brief Provides forward definitions of all public types
  *
- * Copyright (C) 2003-2016 Meltytech, LLC
+ * Copyright (C) 2003-2017 Meltytech, LLC
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -166,6 +166,7 @@ typedef struct mlt_repository_s *mlt_repository;        /**< pointer to Reposito
 typedef struct mlt_cache_s *mlt_cache;                  /**< pointer to Cache object */
 typedef struct mlt_cache_item_s *mlt_cache_item;        /**< pointer to CacheItem object */
 typedef struct mlt_animation_s *mlt_animation;          /**< pointer to Property Animation object */
+typedef struct mlt_slices_s *mlt_slices;                /**< pointer to Sliced processing context object */
 
 typedef void ( *mlt_destructor )( void * );             /**< pointer to destructor function */
 typedef char *( *mlt_serialiser )( void *, int length );/**< pointer to serialization function */
